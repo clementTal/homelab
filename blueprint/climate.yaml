@@ -1,6 +1,6 @@
 blueprint:
-  name: Climate Presets
-  description: Automatisation pour contrôler les préréglages du thermostat en fonction de plusieurs calendriers. L'utilisateur peut choisir le préréglage par défaut lorsque tous les calendriers sont désactivés.
+  name: Simple Climate
+  description: Automatisation pour contrôler les préréglages du thermostat basé sur un calendrier personnalisé
   domain: automation
   input:
     thermostat_entity:
@@ -9,36 +9,26 @@ blueprint:
       selector:
         entity:
           domain: climate
-    schedule_entity_comfort:
-      name: Calendrier pour mode Confort
-      description: Sélectionne l'entité "schedule" pour activer le mode Confort (obligatoire)
+    schedule_entity:
+      name: Entité du calendrier
+      description: Sélectionne l'entité "schedule" à utiliser pour planifier le chauffage
       selector:
         entity:
           domain: schedule
-    schedule_entity_eco:
-      name: Calendrier pour mode Éco (optionnel)
-      description: Sélectionne l'entité "schedule" pour activer le mode Éco
+    preset_when_on:
+      name: Préréglage lorsque le calendrier est activé
+      description: Sélectionne le préréglage lorsque le calendrier est en position "on"
       selector:
-        entity:
-          domain: schedule
-      default: ''
-    schedule_entity_away:
-      name: Calendrier pour mode Absent (optionnel)
-      description: Sélectionne l'entité "schedule" pour activer le mode Absent
-      selector:
-        entity:
-          domain: schedule
-      default: ''
-    schedule_entity_home:
-      name: Calendrier pour mode Présent (optionnel)
-      description: Sélectionne l'entité "schedule" pour activer le mode Présent
-      selector:
-        entity:
-          domain: schedule
-      default: ''
-    default_preset:
-      name: Préréglage par défaut
-      description: Sélectionne le préréglage par défaut lorsque tous les calendriers sont désactivés
+        select:
+          options:
+            - 'comfort'
+            - 'eco'
+            - 'sleep'
+            - 'away'
+            - 'home'
+    preset_when_off:
+      name: Préréglage lorsque le calendrier est désactivé
+      description: Sélectionne le préréglage lorsque le calendrier est en position "off"
       selector:
         select:
           options:
@@ -48,24 +38,12 @@ blueprint:
             - 'away'
             - 'home'
 
-trigger_variables:
-  schedule_entity_eco = !input schedule_entity_eco
-  schedule_entity_away = !input schedule_entity_away
-  schedule_entity_away = !input schedule_entity_away
-  schedule_entity_home = !input schedule_entity_home
-  
 mode: restart
 max_exceeded: silent
 
 trigger:
   - platform: state
-    entity_id: !input schedule_entity_comfort
-  - platform: state
-    entity_id: !input schedule_entity_eco
-  - platform: state
-    entity_id: !input schedule_entity_away
-  - platform: state
-    entity_id: !input schedule_entity_home
+    entity_id: !input schedule_entity
 
 condition: []
 
@@ -73,55 +51,21 @@ action:
   - choose:
       - conditions:
           - condition: state
-            entity_id: !input schedule_entity_comfort
+            entity_id: !input schedule_entity
             state: "on"
         sequence:
           - service: climate.set_preset_mode
             target:
               entity_id: !input thermostat_entity
             data:
-              preset_mode: 'comfort'
+              preset_mode: !input preset_when_on
       - conditions:
-          - condition: template
-            value_template: "{{ is_state('schedule_entity_eco.iphone', 'on') }}"
+          - condition: state
+            entity_id: !input schedule_entity
+            state: "off"
         sequence:
           - service: climate.set_preset_mode
             target:
               entity_id: !input thermostat_entity
             data:
-              preset_mode: 'eco'
-      - conditions:
-          - condition: template
-            value_template: "{{ is_state('schedule_entity_away.iphone', 'on') }}"
-        sequence:
-          - service: climate.set_preset_mode
-            target:
-              entity_id: !input thermostat_entity
-            data:
-              preset_mode: 'away'
-      - conditions:
-          - condition: template
-            value_template: "{{ is_state('schedule_entity_home.iphone', 'on') }}"
-        sequence:
-          - service: climate.set_preset_mode
-            target:
-              entity_id: !input thermostat_entity
-            data:
-              preset_mode: 'home'
-      - conditions:
-          - condition: template
-            value_template: >
-              {% set comfort = states(!input schedule_entity_comfort) %}
-              {% set eco = states(!input schedule_entity_eco) %}
-              {% set away = states(!input schedule_entity_away) %}
-              {% set home = states(!input schedule_entity_home) %}
-              {{ (comfort is none or comfort.state == 'off') and 
-                 (eco is none or eco.state == 'off') and 
-                 (away is none or away.state == 'off') and 
-                 (home is none or home.state == 'off') }}
-        sequence:
-          - service: climate.set_preset_mode
-            target:
-              entity_id: !input thermostat_entity
-            data:
-              preset_mode: !input default_preset
+              preset_mode: !input preset_when_off

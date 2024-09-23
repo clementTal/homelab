@@ -1,0 +1,116 @@
+---
+version: "3.7"
+
+volumes:
+  movies:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=${NAS_URL},rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+      device: ":${MOVIE_DIR}"
+  series:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=${NAS_URL},rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+      device: ":${TV_SHOW_DIR}"
+  music:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=${NAS_URL},rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+      device: ":${MUSIC_DIR}"
+  download:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: "addr=${NAS_URL},rw,noatime,rsize=8192,wsize=8192,tcp,timeo=14,nfsvers=4"
+      device: ":${DOWNLOAD_DIR}"
+
+services:
+  # https://github.com/haugene/docker-transmission-openvpn
+  transmission:
+    image: haugene/transmission-openvpn:latest
+    container_name: transmission
+    restart: always
+    ports:
+      - "9091:9091"
+    # https://haugene.github.io/docker-transmission-openvpn/config-options/
+    env_file: stack.env
+    volumes:
+      - /opt/transmission/config:/config
+      - /opt/transmission/data:/data
+      - download:/media/downloads
+      - series:/media/series
+      - movies:/media/movies
+      - /etc/localtime:/etc/localtime:ro
+    cap_add:
+      - NET_ADMIN
+
+  # https://github.com/linuxserver/docker-radarr
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: always
+    ports:
+      - "7878:7878"
+    env_file: stack.env
+    volumes:
+      - /opt/radarr/config:/config
+      - movies:/media/movies
+      - download:/media/downloads
+      
+  # https://github.com/linuxserver/docker-sonarr
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: always
+    ports:
+      - "8989:8989"
+    env_file: stack.env
+    volumes:
+      - /opt/sonarr/config:/config
+      - series:/media/series
+      - download:/media/downloads
+
+  # https://github.com/linuxserver/docker-sonarr
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    env_file: stack.env
+    volumes:
+      - /opt/lidarr/config:/config
+      - music:/media/music
+      - download:/media/downloads
+    ports:
+      - 8686:8686
+    restart: always
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - /opt/bazarr/config:/config
+      - movies:/media/movies
+      - series:/media/series
+    ports:
+      - 6767:6767
+    restart: always
+
+  # https://github.com/linuxserver/docker-prowlarr
+  prowlarr:
+    image: linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: always
+    ports:
+      - "9696:9696"
+    cap_add:
+      - NET_ADMIN
+    env_file: stack.env
+    volumes:
+      - /opt/prowlarr/config:/config
+      - download:/media/downloads  # transmission watch directory
