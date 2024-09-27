@@ -9,6 +9,12 @@ blueprint:
       selector:
         entity:
           domain: climate
+    kill_switch:
+      name: Switch de délestage
+      description: Sélectionne le switch pour activer ou désactiver le délestage
+      selector:
+        entity:
+          domain: switch
     schedule_entity:
       name: Entité du calendrier
       description: Sélectionne l'entité "schedule" à utiliser pour planifier le chauffage
@@ -44,12 +50,17 @@ max_exceeded: silent
 trigger:
   - platform: state
     entity_id: !input schedule_entity
+  - platform: state
+    entity_id: !input kill_switch
 
 condition: []
 
 action:
   - choose:
       - conditions:
+          - condition: state
+            entity_id: !input kill_switch
+            state: "off"
           - condition: state
             entity_id: !input schedule_entity
             state: "on"
@@ -61,6 +72,9 @@ action:
               preset_mode: !input preset_when_on
       - conditions:
           - condition: state
+            entity_id: !input kill_switch
+            state: "off"
+          - condition: state
             entity_id: !input schedule_entity
             state: "off"
         sequence:
@@ -69,3 +83,12 @@ action:
               entity_id: !input thermostat_entity
             data:
               preset_mode: !input preset_when_off
+      - conditions:
+          - condition: state
+            entity_id: !input kill_switch
+            state: "on"
+        sequence:
+          - action: climate.turn_off
+            data: {}
+            target:
+              entity_id: !input thermostat_entity
