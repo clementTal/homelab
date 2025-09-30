@@ -32,8 +32,8 @@ blueprint:
       description: The external sensor to display temperature values from
       selector:
         entity:
-          device_class:
-            - temperature
+#          device_class:
+#            - temperature
           domain:
             - input_number
           multiple: false
