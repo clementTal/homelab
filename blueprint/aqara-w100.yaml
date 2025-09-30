@@ -34,6 +34,7 @@ blueprint:
         entity:
           device_class:
             - temperature
+            - input_number
           multiple: false
     thermostat:
       name: thermostat to control
@@ -42,6 +43,7 @@ blueprint:
         entity:
           domain:
             - climate
+            - input_number
           multiple: false
     action_double_plus:
       name: double plus
